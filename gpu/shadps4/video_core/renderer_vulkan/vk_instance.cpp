@@ -180,7 +180,7 @@ Instance::Instance(const Frontend::WindowSystemInfo& window_info, s32 physical_d
                VK_VERSION_MAJOR(TargetVulkanApiVersion), VK_VERSION_MINOR(TargetVulkanApiVersion),
                VK_VERSION_MAJOR(properties.apiVersion), VK_VERSION_MINOR(properties.apiVersion));
 
-    CreateDevice();
+    ASSERT_MSG(CreateDevice(), "Failed to create Vulkan logical device");
     CollectPhysicalMemoryInfo();
     CollectImageFormatInfo();
     CollectToolingInfo();
@@ -432,18 +432,24 @@ bool Instance::CreateDevice() {
     }
 
     u32 sparse_queue_family_index = queue_family_index;
-    if (!(family_properties[queue_family_index].queueFlags & vk::QueueFlagBits::eSparseBinding)) {
+    bool sparse_queue_available =
+        (family_properties[queue_family_index].queueFlags & vk::QueueFlagBits::eSparseBinding) !=
+        vk::QueueFlags{};
+    if (!sparse_queue_available) {
         const auto sparse_family = std::find_if(
             family_properties.begin(), family_properties.end(), [](const auto& family) {
                 return family.queueCount && (family.queueFlags & vk::QueueFlagBits::eSparseBinding);
             });
         if (sparse_family == family_properties.end()) {
-            LOG_CRITICAL(Render_Vulkan,
-                         "Unable to find a queue family with VK_QUEUE_SPARSE_BINDING_BIT; "
-                         "sparse buffer bindings are unavailable on this device.");
-            return false;
+            // Sparse binding is optional for this renderer. PanVK on Mali-G720
+            // exposes no sparse queue; keep device creation on the graphics queue.
+            LOG_WARNING(Render_Vulkan,
+                        "No queue family supports VK_QUEUE_SPARSE_BINDING_BIT; "
+                        "continuing without sparse buffer bindings.");
+        } else {
+            sparse_queue_family_index = static_cast<u32>(sparse_family - family_properties.begin());
+            sparse_queue_available = true;
         }
-        sparse_queue_family_index = static_cast<u32>(sparse_family - family_properties.begin());
     }
     LOG_INFO(Render_Vulkan, "Queue families: graphics={}, sparse={}, reused_graphics={}",
              queue_family_index, sparse_queue_family_index,
@@ -510,8 +516,8 @@ bool Instance::CreateDevice() {
                 .shaderFloat64 = features.shaderFloat64,
                 .shaderInt64 = features.shaderInt64,
                 .shaderInt16 = features.shaderInt16,
-                .sparseBinding = features.sparseBinding,
-                .sparseResidencyBuffer = features.sparseResidencyBuffer,
+                .sparseBinding = sparse_queue_available && features.sparseBinding,
+                .sparseResidencyBuffer = sparse_queue_available && features.sparseResidencyBuffer,
             },
         },
         vk::PhysicalDeviceVulkan11Features{
