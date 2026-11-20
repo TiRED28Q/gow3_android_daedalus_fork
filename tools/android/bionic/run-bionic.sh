@@ -35,6 +35,9 @@ elif [ "$turnip" = custom ]; then
  export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${custom%/*}"
 else unset GOW3_VULKAN_DRIVER; fi
 echo "Bionic Vulkan selection: $turnip${GOW3_VULKAN_DRIVER:+ ($GOW3_VULKAN_DRIVER)}"
+if [ "${GOW3_ALLOW_MISSING_ROBUST_IMAGE_ACCESS2:-0}" = "1" ]; then
+ echo "WARNING: PanVK compatibility fallback enabled; robustImageAccess2 is unavailable (experimental)"
+fi
 export GOW3_ANDROID_INPUT=1 GOW3_PAD_FILE="$base/android-pad.state" GOW3_PAD_QUIET=1
 export GOW3_IME_FILE="$base/ime.request" GOW3_AUDIO_FIFO="$base/audio.fifo"
 export GOW3_PRESENT_SOCKET="$base/present.sock"
