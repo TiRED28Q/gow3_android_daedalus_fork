@@ -59,6 +59,7 @@ public final class GpuDriverManager {
     public static void configureEnvironment(Context context,Map<String,String> environment) throws IOException {
         String selection=selected(context);
         environment.remove("GOW3_CUSTOM_VULKAN_DRIVER"); environment.remove("GOW3_VULKAN_DRIVER");
+        environment.remove("GOW3_STREAM_MEMORY");
         if (selection.startsWith("custom:")) {
             DriverArchive.Installed driver=DriverArchive.read(root(context),selection.substring(7),Build.VERSION.SDK_INT);
             DriverArchive.validateLibrary(driver.library);
@@ -66,8 +67,11 @@ public final class GpuDriverManager {
             environment.put("GOW3_CUSTOM_VULKAN_DRIVER",driver.library.getAbsolutePath());
             // PanVK currently lacks robustImageAccess2 on some Mali CSF devices.
             // Keep this narrowly scoped to the PanVK package and mark the run experimental.
-            if (driver.name.toLowerCase(Locale.ROOT).contains("panvk"))
+            if (driver.name.toLowerCase(Locale.ROOT).contains("panvk")) {
                 environment.put("GOW3_ALLOW_MISSING_ROBUST_IMAGE_ACCESS2","1");
+                // Mali PanVK: keep stream buffers in host memory to reduce device-local allocation pressure.
+                environment.put("GOW3_STREAM_MEMORY","host");
+            }
             else
                 environment.remove("GOW3_ALLOW_MISSING_ROBUST_IMAGE_ACCESS2");
         } else {
