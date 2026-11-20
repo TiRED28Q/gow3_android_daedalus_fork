@@ -64,6 +64,12 @@ public final class GpuDriverManager {
             DriverArchive.validateLibrary(driver.library);
             environment.put("GOW3_BIONIC_DRIVER","custom");
             environment.put("GOW3_CUSTOM_VULKAN_DRIVER",driver.library.getAbsolutePath());
+            // PanVK currently lacks robustImageAccess2 on some Mali CSF devices.
+            // Keep this narrowly scoped to the PanVK package and mark the run experimental.
+            if (driver.name.toLowerCase(Locale.ROOT).contains("panvk"))
+                environment.put("GOW3_ALLOW_MISSING_ROBUST_IMAGE_ACCESS2","1");
+            else
+                environment.remove("GOW3_ALLOW_MISSING_ROBUST_IMAGE_ACCESS2");
         } else {
             if (!Arrays.asList("auto","gen8","adreno7xx","system").contains(selection)) throw new IOException("Invalid driver selection");
             environment.put("GOW3_BIONIC_DRIVER",selection);
