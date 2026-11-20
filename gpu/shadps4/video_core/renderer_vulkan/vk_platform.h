@@ -4,6 +4,7 @@
 #pragma once
 
 #include <fmt/format.h>
+#include <source_location>
 
 #include "common/assert.h"
 #include "common/logging/log.h"
@@ -51,7 +52,13 @@ void SetObjectName(vk::Device device, const HandleType& handle, const char* form
 }
 
 template <StringLiteral msg = "">
-static void Check(vk::Result r) {
+static void Check(vk::Result r,
+                  std::source_location location = std::source_location::current()) {
+    if (r != vk::Result::eSuccess) {
+        LOG_ERROR(Render_Vulkan, "Vulkan call failed at {}:{} ({}): {}",
+                  location.file_name(), location.line(), location.function_name(),
+                  vk::to_string(r));
+    }
     if constexpr (msg.len <= 1) {
         ASSERT_MSG(r == vk::Result::eSuccess, "vk::Result={}", vk::to_string(r));
     } else {
@@ -61,7 +68,13 @@ static void Check(vk::Result r) {
 }
 
 template <StringLiteral msg = "", typename T>
-static T Check(vk::ResultValue<T> r) {
+static T Check(vk::ResultValue<T> r,
+               std::source_location location = std::source_location::current()) {
+    if (r.result != vk::Result::eSuccess) {
+        LOG_ERROR(Render_Vulkan, "Vulkan call failed at {}:{} ({}): {}",
+                  location.file_name(), location.line(), location.function_name(),
+                  vk::to_string(r.result));
+    }
     if constexpr (msg.len <= 1) {
         ASSERT_MSG(r.result == vk::Result::eSuccess, "vk::Result={}", vk::to_string(r.result));
     } else {
