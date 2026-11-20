@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <boost/container/static_vector.hpp>
+#include <cstdlib>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
@@ -279,8 +280,22 @@ bool Instance::CreateDevice() {
     const auto robustness2_features = feature_chain.get<vk::PhysicalDeviceRobustness2FeaturesEXT>();
     ASSERT_MSG(robustness2_features.robustBufferAccess2,
                "Required Vulkan feature unavailable: robustBufferAccess2");
-    ASSERT_MSG(robustness2_features.robustImageAccess2,
-               "Required Vulkan feature unavailable: robustImageAccess2");
+    // PanVK on some Mali devices does not expose robustImageAccess2 yet.
+    // This opt-in fallback is for compatibility testing only: image accesses
+    // that would have been robustly bounded may behave differently.
+    const char* allow_missing_robust_image_access2 =
+        std::getenv("GOW3_ALLOW_MISSING_ROBUST_IMAGE_ACCESS2");
+    const bool enable_robust_image_access2 =
+        robustness2_features.robustImageAccess2;
+    if (!enable_robust_image_access2) {
+        ASSERT_MSG(allow_missing_robust_image_access2 &&
+                       allow_missing_robust_image_access2[0] == '1',
+                   "Required Vulkan feature unavailable: robustImageAccess2 "
+                   "(set GOW3_ALLOW_MISSING_ROBUST_IMAGE_ACCESS2=1 for experimental testing)");
+        LOG_WARNING(Render_Vulkan,
+                    "robustImageAccess2 unavailable; continuing in experimental compatibility mode. "
+                    "Texture corruption or GPU faults may occur.");
+    }
     ASSERT_MSG(robustness2_features.nullDescriptor,
                "Required Vulkan feature unavailable: nullDescriptor");
 
@@ -551,7 +566,7 @@ bool Instance::CreateDevice() {
         },
         vk::PhysicalDeviceRobustness2FeaturesEXT{
             .robustBufferAccess2 = true,
-            .robustImageAccess2 = true,
+            .robustImageAccess2 = enable_robust_image_access2,
             .nullDescriptor = true,
         },
         vk::PhysicalDeviceVertexInputDynamicStateFeaturesEXT{
