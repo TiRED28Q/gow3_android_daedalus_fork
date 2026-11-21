@@ -395,6 +395,11 @@ public:
         return vk11_props.subgroupSize;
     }
 
+    /// Returns the maximum number of workgroups in the X dimension for one compute dispatch.
+    u32 MaxComputeWorkGroupCountX() const {
+        return properties.limits.maxComputeWorkGroupCount[0];
+    }
+
     /// Returns the maximum size of compute shared memory.
     u32 MaxComputeSharedMemorySize() const {
         return properties.limits.maxComputeSharedMemorySize;
