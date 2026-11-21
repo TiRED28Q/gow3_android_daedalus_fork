@@ -19,7 +19,7 @@ class AndroidFsrIntegrationTests(unittest.TestCase):
         java = (ROOT / "android-launcher/app/src/main/java/ro/cobrabm/fexdroid/SettingsDialog.java").read_text()
         run = (ROOT / "tools/android/device/run-gow3.sh").read_text()
         self.assertIn("upscaler=off", ini)
-        self.assertIn("render_resolution=720p", ini)
+        self.assertIn("render_resolution=540p", ini)
         self.assertIn('key = "render_resolution"', ui)
         self.assertNotIn('key = "upscaler"', ui)
         self.assertNotIn('key = "preset"', ui)
