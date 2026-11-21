@@ -62,8 +62,9 @@ void Semaphore::Wait(u64 tick) {
         .pValues = &tick,
     };
 
-    while (instance.GetDevice().waitSemaphores(&wait_info, WAIT_TIMEOUT) != vk::Result::eSuccess) {
-    }
+    const vk::Result wait_result = instance.GetDevice().waitSemaphores(&wait_info, WAIT_TIMEOUT);
+    ASSERT_MSG(wait_result == vk::Result::eSuccess,
+               "Timeline semaphore wait for tick {} failed: {}", tick, vk::to_string(wait_result));
     Refresh();
 }
 
