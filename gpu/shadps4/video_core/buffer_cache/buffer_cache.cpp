@@ -588,7 +588,7 @@ void BufferCache::EnsureResident(const Buffer* arena, u64 first_block, u64 last_
             Backing backing;
             backing.start = range.start;
             backing.end = range.end;
-            backing.memory = VK_NULL_HANDLE;
+            backing.memory = vk::DeviceMemory{};
             backing.offset = 0;
             resident_ranges.Add(backing);
 
