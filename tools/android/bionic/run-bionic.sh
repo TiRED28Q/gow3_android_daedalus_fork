@@ -36,7 +36,7 @@ for index, line in enumerate(lines):
         lines[index] = f"{key}={changes[key][1]}"
         changed.append(key)
 if changed:
-    path.write_text("\\n".join(lines) + "\\n", encoding="utf-8")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("Android stability profile: migrated " + ", ".join(changed))
 PY
     : > "$profile_marker"
