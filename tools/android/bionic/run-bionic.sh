@@ -14,6 +14,34 @@ export GOW3_BIONIC_RUNNER="$base/run-bionic.sh"
 export GOW3_CONFIG="$base/gow3.ini"
 mkdir -p "$TMPDIR" "$HOME/.fex-emu" "$HOME/.cache/fex-emu" "$base/user" "$base/logs"
 [ -f "$GOW3_CONFIG" ] || cp "$base/gow3.default.ini" "$GOW3_CONFIG"
+
+# One-time migration from the old Android defaults (720p + 120 FPS) to a
+# lighter Mali-friendly profile. Only untouched old defaults are changed;
+# explicit user-selected values are preserved.
+profile_marker="$base/.android_mali_stability_profile_v1"
+if [ ! -f "$profile_marker" ]; then
+    "$python" - "$GOW3_CONFIG" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+lines = path.read_text(encoding="utf-8").splitlines()
+changes = {"render_resolution": ("720p", "540p"), "engine_fps": ("120", "60")}
+changed = []
+for index, line in enumerate(lines):
+    if "=" not in line or line.lstrip().startswith("#"):
+        continue
+    key, value = line.split("=", 1)
+    if key in changes and value.strip() == changes[key][0]:
+        lines[index] = f"{key}={changes[key][1]}"
+        changed.append(key)
+if changed:
+    path.write_text("\\n".join(lines) + "\\n", encoding="utf-8")
+    print("Android stability profile: migrated " + ", ".join(changed))
+PY
+    : > "$profile_marker"
+fi
+
 setting() { sed -n "s/^$1=//p" "$GOW3_CONFIG" | tail -n 1; }
 chip=$("$runtime/bin/kgsl-chip-id" 2>/dev/null || true)
 turnip=${GOW3_BIONIC_DRIVER:-auto}
