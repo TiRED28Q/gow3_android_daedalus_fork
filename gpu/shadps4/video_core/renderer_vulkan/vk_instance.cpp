@@ -451,9 +451,17 @@ bool Instance::CreateDevice() {
             sparse_queue_available = true;
         }
     }
-    LOG_INFO(Render_Vulkan, "Queue families: graphics={}, sparse={}, reused_graphics={}",
+    sparse_buffer_binding =
+        sparse_queue_available && features.sparseBinding && features.sparseResidencyBuffer;
+    if (!sparse_buffer_binding) {
+        sparse_queue_family_index = queue_family_index;
+        LOG_INFO(Render_Vulkan,
+                 "Sparse buffer residency unavailable; BufferCache will use backed arenas.");
+    }
+    LOG_INFO(Render_Vulkan,
+             "Queue families: graphics={}, sparse={}, reused_graphics={}, sparse_buffer_residency={}",
              queue_family_index, sparse_queue_family_index,
-             queue_family_index == sparse_queue_family_index);
+             queue_family_index == sparse_queue_family_index, sparse_buffer_binding);
 
     static constexpr std::array queue_priorities = {1.0f};
     const vk::DeviceQueueCreateInfo queue_info = {
@@ -516,8 +524,8 @@ bool Instance::CreateDevice() {
                 .shaderFloat64 = features.shaderFloat64,
                 .shaderInt64 = features.shaderInt64,
                 .shaderInt16 = features.shaderInt16,
-                .sparseBinding = sparse_queue_available && features.sparseBinding,
-                .sparseResidencyBuffer = sparse_queue_available && features.sparseResidencyBuffer,
+                .sparseBinding = sparse_buffer_binding,
+                .sparseResidencyBuffer = sparse_buffer_binding,
             },
         },
         vk::PhysicalDeviceVulkan11Features{
