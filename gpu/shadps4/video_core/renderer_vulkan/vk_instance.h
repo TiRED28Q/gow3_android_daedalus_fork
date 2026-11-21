@@ -101,6 +101,11 @@ public:
         return sparse_queue;
     }
 
+    /// True only when sparse buffer binding and sparse residency are enabled on a sparse queue.
+    bool SupportsSparseBufferBinding() const {
+        return sparse_buffer_binding;
+    }
+
     vk::Queue GetPresentQueue() const {
         return present_queue;
     }
@@ -564,6 +569,7 @@ private:
     std::unordered_map<vk::Format, vk::FormatProperties3> format_properties;
     TracyVkCtx profiler_context{};
     u32 queue_family_index{0};
+    bool sparse_buffer_binding{};
     bool custom_border_color{};
     bool fragment_shader_barycentric{};
     bool amd_shader_explicit_vertex_parameter{};
