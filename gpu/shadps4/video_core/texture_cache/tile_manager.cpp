@@ -23,8 +23,6 @@
 #include "video_core/host_shaders/tiling_micro_8_comp.h"
 #include "video_core/host_shaders/tiling_micro_96_comp.h"
 
-#include <algorithm>
-
 #include <magic_enum/magic_enum.hpp>
 #include <vk_mem_alloc.h>
 
@@ -74,16 +72,11 @@ TileManager::TileManager(const Vulkan::Instance& instance_, Vulkan::Scheduler& s
     desc_layout = std::move(desc_layout_result.value);
 
     const vk::DescriptorSetLayout set_layout = *desc_layout;
-    const vk::PushConstantRange push_range = {
-        .stageFlags = vk::ShaderStageFlagBits::eCompute,
-        .offset = 0,
-        .size = sizeof(u32),
-    };
     const vk::PipelineLayoutCreateInfo layout_info = {
         .setLayoutCount = 1U,
         .pSetLayouts = &set_layout,
-        .pushConstantRangeCount = 1U,
-        .pPushConstantRanges = &push_range,
+        .pushConstantRangeCount = 0U,
+        .pPushConstantRanges = nullptr,
     };
     auto [layout_result, layout] = device.createPipelineLayoutUnique(layout_info);
     ASSERT_MSG(layout_result == vk::Result::eSuccess, "Failed to create pipeline layout: {}",
@@ -203,9 +196,8 @@ vk::Pipeline TileManager::GetTilingPipeline(const ImageInfo& info, bool is_tiler
 void TileManager::RecordTilingDispatch(vk::Pipeline pipeline, const vk::DescriptorBufferInfo& tiled,
                                        const vk::DescriptorBufferInfo& linear,
                                        const vk::DescriptorBufferInfo& params, u32 dim_x) {
-    const u32 max_groups_x = instance.MaxComputeWorkGroupCountX();
     scheduler.Record([pipeline, layout = *pl_layout, tiled, linear, params,
-                      dim_x, max_groups_x](vk::CommandBuffer cmdbuf) {
+                      dim_x](vk::CommandBuffer cmdbuf) {
         cmdbuf.bindPipeline(vk::PipelineBindPoint::eCompute, pipeline);
         const std::array<vk::WriteDescriptorSet, 3> set_writes = {{
             {
@@ -228,15 +220,7 @@ void TileManager::RecordTilingDispatch(vk::Pipeline pipeline, const vk::Descript
             },
         }};
         cmdbuf.pushDescriptorSetKHR(vk::PipelineBindPoint::eCompute, layout, 0, set_writes);
-        // Vulkan limits the number of workgroups in one dispatch. Large GoW3 textures
-        // can exceed that limit on mobile GPUs, so split the linear texel range into
-        // bounded dispatches and pass each chunk's first texel through a push constant.
-        for (u32 base = 0; base < dim_x; base += max_groups_x) {
-            const u32 base_texel = base * 64;
-            cmdbuf.pushConstants(layout, vk::ShaderStageFlagBits::eCompute, 0,
-                                 sizeof(base_texel), &base_texel);
-            cmdbuf.dispatch(std::min(max_groups_x, dim_x - base), 1, 1);
-        }
+        cmdbuf.dispatch(dim_x, 1, 1);
     });
 }
 

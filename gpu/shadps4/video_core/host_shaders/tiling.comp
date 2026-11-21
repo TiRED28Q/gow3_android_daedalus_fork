@@ -424,12 +424,8 @@ uint GetMipLevel(inout uint texel) {
     return mip;
 }
 
-layout (push_constant) uniform DispatchBase {
-    uint base_texel;
-};
-
 void main() {
-    uint texel = base_texel + gl_GlobalInvocationID.x;
+    uint texel = gl_GlobalInvocationID.x;
     uint mip = GetMipLevel(texel);
     uint pitch = info.mips[mip].pitch;
     uint height = info.mips[mip].height;
@@ -445,8 +441,8 @@ void main() {
 #endif
 
     if (IS_TILER != 0) {
-        tiled_data[tiled_offset / BYTES_PER_PIXEL] = linear_data[texel];
+        tiled_data[tiled_offset / BYTES_PER_PIXEL] = linear_data[gl_GlobalInvocationID.x];
     } else {
-        linear_data[texel] = tiled_data[tiled_offset / BYTES_PER_PIXEL];
+        linear_data[gl_GlobalInvocationID.x] = tiled_data[tiled_offset / BYTES_PER_PIXEL];
     }
 }
