@@ -417,13 +417,12 @@ void Scheduler::SubmitExecution(SubmitInfo& info) {
     std::scoped_lock lk{submit_mutex};
     const u64 signal_value = work_semaphore.NextTick();
 
-    // BACHATA ARM64's bounded timeline policy: do not issue
-    // vkGetSemaphoreCounterValue on every submit (a costly Turnip ioctl).
-    // Instead, at most eight submissions remain in flight. We block on an
-    // exact, already submitted GPU tick only if the producer outruns the GPU.
+    // Android stability policy: keep the driver queue bounded. Mali/PanVK can
+    // become unstable when the guest gets too far ahead of GPU completion.
+    // We wait on an exact submitted tick instead of allowing an unbounded backlog.
     // Readback demand paths retain their own mandatory waits; no guest memory
     // becomes visible until its matching timeline tick is complete.
-    constexpr u64 MaxAndroidInFlightSubmissions = 8;
+    constexpr u64 MaxAndroidInFlightSubmissions = 4;
     // Cache the policy once: this is the hot path for thousands of submissions.
     // GOW3_VK_POLL_EACH_SUBMIT=1 re-enables the old path for device A/B testing.
     static const bool bounded_submit = [] {
@@ -485,7 +484,11 @@ void Scheduler::SubmitExecution(SubmitInfo& info) {
 
     ImGui::Core::TextureManager::Submit();
     auto submit_result = instance.GetGraphicsQueue().submit(submit_info, info.fence);
-    ASSERT_MSG(submit_result != vk::Result::eErrorDeviceLost, "Device lost during submit");
+    if (submit_result != vk::Result::eSuccess) {
+        LOG_CRITICAL(Render_Vulkan, "vkQueueSubmit failed at timeline tick {}: {}",
+                     signal_value, vk::to_string(submit_result));
+        ASSERT_MSG(false, "Vulkan queue submission failed: {}", vk::to_string(submit_result));
+    }
 
     // On Android, completion is cached and advanced by the bounded wait
     // above, explicit guest readback waits, or the deferred-ops poller (which
