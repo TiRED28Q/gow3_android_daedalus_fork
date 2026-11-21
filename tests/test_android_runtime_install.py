@@ -101,13 +101,13 @@ public class TestInstall {
   if (Boolean.parseBoolean(args[2])) assert !new File(files,"rootfs").exists();
   assert Files.readString(ini).contains("overlay_corner=4");
   assert Files.readString(save).equals("keep-save");
-  assert Files.readString(ini).contains("render_resolution=720p");
+  assert Files.readString(ini).contains("render_resolution=540p");
   assert Files.readString(ini).contains("deferred_readback=1");
   // Reproduce the reported partial INI even with an already-current runtime.
   Files.writeString(ini,"# custom\\nshow_fps=1\\nengine_fps=240\\ncustom_key=keep\\n");
   assert !RuntimeInstaller.ensure(context,files,s -> {});
   String repaired=Files.readString(ini);
-  assert repaired.contains("render_resolution=720p");
+  assert repaired.contains("render_resolution=540p");
   assert repaired.contains("engine_fps=240");
   assert !repaired.contains("engine_fps=120");
   assert repaired.contains("custom_key=keep");
