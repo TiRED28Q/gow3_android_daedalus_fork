@@ -66,7 +66,8 @@ BufferCache::BufferCache(const Vulkan::Instance& instance_, Vulkan::Scheduler& s
     if (!sparse_buffer_residency) {
         arena_page_bits = 26; // 64 MiB pages; a cross-page request needs at most 128 MiB.
     }
-    const u64 min_page_bits = sparse_buffer_residency ? MIN_ARENA_PAGE_BITS : 24;
+    const u64 min_page_bits = sparse_buffer_residency ? MIN_ARENA_PAGE_BITS
+                                                       : MIN_NON_SPARSE_ARENA_PAGE_BITS;
     while (arena_page_bits > min_page_bits &&
            (u64{2} << arena_page_bits) > instance.GetMaxBufferSize()) {
         --arena_page_bits;
